@@ -1,0 +1,37 @@
+name: Build TAMSDESK exe
+
+# EXE را به‌صورت خودکار روی یک ماشین ویندوزی ابری (GitHub) می‌سازد.
+# شما فقط پروژه را روی GitHub push کنید؛ لازم نیست چیزی روی کامپیوتر خودتان نصب کنید.
+# بعد از اتمام، فایل TamsDesk.exe را از تب Actions ← آخرین اجرا ← بخش Artifacts دانلود کنید.
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}   # امکان اجرای دستی از تب Actions
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish single-file exe
+        run: >
+          dotnet publish TamsDesk.Client/TamsDesk.Client.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o out
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TamsDesk-exe
+          path: out/TamsDesk.exe
+          if-no-files-found: error
