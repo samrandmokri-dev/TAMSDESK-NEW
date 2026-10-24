@@ -53,6 +53,7 @@ public sealed class RelayClient : IDisposable
     private async Task ReceiveLoop()
     {
         var buffer = new byte[64 * 1024];
+        var segment = new ArraySegment<byte>(buffer);
         using var frame = new MemoryStream();
         try
         {
@@ -62,7 +63,7 @@ public sealed class RelayClient : IDisposable
                 WebSocketReceiveResult result;
                 do
                 {
-                    result = await _ws.ReceiveAsync(buffer, _cts.Token);
+                    result = await _ws.ReceiveAsync(segment, _cts.Token);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         OnClosed?.Invoke("closed by relay");

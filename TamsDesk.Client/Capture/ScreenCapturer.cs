@@ -74,25 +74,34 @@ public sealed class ScreenCapturer
 
     private static void DrawCursor(Graphics g)
     {
+        // Draw the live cursor onto the captured frame using GDI DrawIconEx
+        // (no WinForms dependency, so this compiles in a pure WPF project).
         var ci = new CURSORINFO { cbSize = Marshal.SizeOf<CURSORINFO>() };
-        if (!GetCursorInfo(ref ci) || ci.flags != CURSOR_SHOWING) return;
-        if (GetIconInfo(ci.hCursor, out var icon))
+        if (!GetCursorInfo(ref ci) || ci.flags != CURSOR_SHOWING || ci.hCursor == IntPtr.Zero) return;
+        if (!GetIconInfo(ci.hCursor, out var icon)) return;
+
+        IntPtr hdc = g.GetHdc();
+        try
         {
             int x = ci.ptScreenPos.X - icon.xHotspot;
             int y = ci.ptScreenPos.Y - icon.yHotspot;
-            using var cur = new Cursor(ci.hCursor);
-            cur.Draw(g, new Rectangle(x, y, cur.Size.Width, cur.Size.Height));
+            DrawIconEx(hdc, x, y, ci.hCursor, 0, 0, 0, IntPtr.Zero, DI_NORMAL);
+        }
+        finally
+        {
+            g.ReleaseHdc(hdc);
             if (icon.hbmColor != IntPtr.Zero) DeleteObject(icon.hbmColor);
             if (icon.hbmMask != IntPtr.Zero) DeleteObject(icon.hbmMask);
         }
     }
 
     // --- native ---
-    private const int SM_CXSCREEN = 0, SM_CYSCREEN = 1, CURSOR_SHOWING = 1;
+    private const int SM_CXSCREEN = 0, SM_CYSCREEN = 1, CURSOR_SHOWING = 1, DI_NORMAL = 0x0003;
 
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int n);
     [DllImport("user32.dll")] private static extern bool GetCursorInfo(ref CURSORINFO pci);
     [DllImport("user32.dll")] private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
+    [DllImport("user32.dll")] private static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr hIcon, int cx, int cy, int step, IntPtr brush, int flags);
     [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr hObject);
 
     [StructLayout(LayoutKind.Sequential)]
